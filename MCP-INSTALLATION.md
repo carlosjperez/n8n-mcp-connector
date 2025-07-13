@@ -73,6 +73,7 @@ Este script:
 
 Una vez configurado, tendrás acceso a estas herramientas en Claude:
 
+### Herramientas Básicas
 | Herramienta | Descripción |
 |-------------|-------------|
 | `execute_workflow` | Ejecutar workflows de n8n con datos personalizados |
@@ -82,6 +83,22 @@ Una vez configurado, tendrás acceso a estas herramientas en Claude:
 | `list_executions` | Ver historial de ejecuciones recientes |
 | `activate_workflow` | Activar/desactivar workflows |
 | `create_webhook` | Generar URLs de webhook para automatización |
+
+### 🆕 Herramientas Avanzadas (v2.0.0)
+| Herramienta | Descripción |
+|-------------|-------------|
+| `create_node` | Crear nuevos nodos en workflows con configuración avanzada |
+| `update_node` | Modificar nodos existentes (parámetros, credenciales, posición) |
+| `delete_node` | Eliminar nodos de workflows con limpieza automática de conexiones |
+| `create_connection` | Conectar nodos específicos con control de entrada/salida |
+| `delete_connection` | Eliminar conexiones específicas entre nodos |
+
+**🎯 Nuevas Capacidades:**
+- Construcción completa de workflows programáticamente
+- Gestión granular de nodos y conexiones
+- Auto-conexión inteligente de nodos
+- Validación avanzada de parámetros
+- Soporte para credenciales y configuraciones complejas
 
 ## 🔍 Verificación de Instalación
 
@@ -120,5 +137,5 @@ Una vez configurado, tendrás acceso a estas herramientas en Claude:
 ---
 
 **Estado:** ✅ Listo para usar
-**Última verificación:** $(date)
-**Versión:** 1.0.0
+**Última verificación:** 2025-07-13
+**Versión:** 2.0.0

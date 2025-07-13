@@ -1,6 +1,6 @@
-# N8N MCP Connector
+# N8N MCP Connector v2.0.0
 
-Advanced Model Context Protocol server for seamless n8n workflow integration and automation management.
+Advanced Model Context Protocol server for complete n8n workflow automation and programmatic management. Now with full node and connection management capabilities!
 
 [![CI/CD](https://github.com/carlosjperez/n8n-mcp-connector/actions/workflows/ci.yml/badge.svg)](https://github.com/carlosjperez/n8n-mcp-connector/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
