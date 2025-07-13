@@ -2,7 +2,7 @@
 
 Advanced Model Context Protocol server for seamless n8n workflow integration and automation management.
 
-[![CI/CD](https://github.com/YOUR_USERNAME/n8n-mcp-connector/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_USERNAME/n8n-mcp-connector/actions/workflows/ci.yml)
+[![CI/CD](https://github.com/carlosjperez/n8n-mcp-connector/actions/workflows/ci.yml/badge.svg)](https://github.com/carlosjperez/n8n-mcp-connector/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)](https://nodejs.org/)
 
@@ -17,7 +17,7 @@ Advanced Model Context Protocol server for seamless n8n workflow integration and
 
 ```bash
 # Clone repository
-git clone https://github.com/YOUR_USERNAME/n8n-mcp-connector.git
+git clone https://github.com/carlosjperez/n8n-mcp-connector.git
 cd n8n-mcp-connector
 
 # Install dependencies
@@ -150,8 +150,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🆘 Support
 
 - 📖 [Documentation](docs/)
-- 🐛 [Issue Tracker](https://github.com/YOUR_USERNAME/n8n-mcp-connector/issues)
-- 💬 [Discussions](https://github.com/YOUR_USERNAME/n8n-mcp-connector/discussions)
+- 🐛 [Issue Tracker](https://github.com/carlosjperez/n8n-mcp-connector/issues)
+- 💬 [Discussions](https://github.com/carlosjperez/n8n-mcp-connector/discussions)
 
 ## 🛣 Roadmap
 

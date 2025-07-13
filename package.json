@@ -46,10 +46,10 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/YOUR_USERNAME/n8n-mcp-connector.git"
+    "url": "git+https://github.com/carlosjperez/n8n-mcp-connector.git"
   },
   "bugs": {
-    "url": "https://github.com/YOUR_USERNAME/n8n-mcp-connector/issues"
+    "url": "https://github.com/carlosjperez/n8n-mcp-connector/issues"
   },
-  "homepage": "https://github.com/YOUR_USERNAME/n8n-mcp-connector#readme"
+  "homepage": "https://github.com/carlosjperez/n8n-mcp-connector#readme"
 }

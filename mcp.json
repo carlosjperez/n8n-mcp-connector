@@ -1,0 +1,64 @@
+{
+  "name": "n8n-workflows",
+  "version": "1.0.0",
+  "description": "Advanced Model Context Protocol server for seamless n8n workflow integration and automation management",
+  "author": "carlosjperez",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/carlosjperez/n8n-mcp-connector.git"
+  },
+  "main": "dist/index.js",
+  "capabilities": {
+    "tools": true,
+    "resources": false,
+    "prompts": false
+  },
+  "tools": [
+    {
+      "name": "execute_workflow",
+      "description": "Execute an n8n workflow by ID or name with optional input data"
+    },
+    {
+      "name": "list_workflows", 
+      "description": "List all available workflows with optional filtering"
+    },
+    {
+      "name": "get_workflow",
+      "description": "Get detailed information about a specific workflow"
+    },
+    {
+      "name": "get_execution_status",
+      "description": "Get the status and details of a workflow execution"
+    },
+    {
+      "name": "list_executions",
+      "description": "List recent workflow executions with optional filtering"
+    },
+    {
+      "name": "activate_workflow",
+      "description": "Activate or deactivate a workflow"
+    },
+    {
+      "name": "create_webhook",
+      "description": "Create a webhook URL for a workflow"
+    }
+  ],
+  "environment": {
+    "required": [
+      "N8N_BASE_URL"
+    ],
+    "optional": [
+      "N8N_API_KEY",
+      "N8N_USERNAME", 
+      "N8N_PASSWORD"
+    ]
+  },
+  "categories": [
+    "automation",
+    "workflow",
+    "n8n",
+    "integration"
+  ],
+  "documentation": "https://github.com/carlosjperez/n8n-mcp-connector#readme",
+  "license": "MIT"
+} 
