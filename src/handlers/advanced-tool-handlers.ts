@@ -9,7 +9,6 @@
 import { n8nClient } from '../clients/n8n-client.js';
 import { logger, LogContext } from '../utils/logger.js';
 import { validator } from '../utils/validator.js';
-import { resilience } from '../utils/resilience.js';
 import {
   AdvancedToolResult,
   CreateNodeArgs,
@@ -17,28 +16,8 @@ import {
   DeleteNodeArgs,
   CreateConnectionArgs,
   DeleteConnectionArgs,
-  UpdateWorkflowArgs,
-  CreateWorkflowArgs,
-  CloneWorkflowArgs,
-  ImportWorkflowArgs,
-  ExportWorkflowArgs,
-  CreateCredentialArgs,
-  UpdateCredentialArgs,
-  TestCredentialArgs,
-  AdvancedExecuteArgs,
-  BulkOperationArgs,
-  ExecutionFilters,
-  WorkflowValidation,
-  NodeTypeInfo,
-  AdvancedWebhookArgs,
-  TriggerInfo,
-  WorkflowEnvironment,
-  BackupArgs,
-  RestoreArgs,
   Node,
-  Connection,
-  WorkflowTemplate,
-  Credential
+  Connection
 } from '../types/advanced-types.js';
 
 /**
@@ -148,7 +127,7 @@ export class CreateNodeHandler extends AdvancedBaseToolHandler {
         const updatedNodes = [...workflow.nodes as Node[], newNode];
         
         // Auto-connect if requested and target node exists
-        let updatedConnections = workflow.connections;
+        const updatedConnections = workflow.connections;
         if (args.autoConnect && args.targetNodeId) {
           const targetNode = workflow.nodes.find(n => n.id === args.targetNodeId);
           if (targetNode) {
@@ -301,7 +280,7 @@ export class DeleteNodeHandler extends AdvancedBaseToolHandler {
         const updatedNodes = (workflow.nodes as Node[]).filter(n => n.id !== args.nodeId);
         
         // Remove connections involving this node
-        let updatedConnections = { ...workflow.connections };
+        const updatedConnections = { ...workflow.connections };
         
         // Remove outgoing connections
         delete updatedConnections[args.nodeId];
@@ -389,7 +368,7 @@ export class CreateConnectionHandler extends AdvancedBaseToolHandler {
         }
 
         // Update connections
-        let updatedConnections = { ...workflow.connections };
+        const updatedConnections = { ...workflow.connections };
         
         if (!updatedConnections[args.connection.sourceNodeId]) {
           updatedConnections[args.connection.sourceNodeId] = {};
@@ -462,7 +441,7 @@ export class DeleteConnectionHandler extends AdvancedBaseToolHandler {
         const workflow = await n8nClient.getInstance().getWorkflow(args.workflowId);
         
         // Update connections - remove specific connection
-        let updatedConnections = { ...workflow.connections };
+        const updatedConnections = { ...workflow.connections };
         
         if (updatedConnections[args.sourceNodeId] && 
             updatedConnections[args.sourceNodeId].main &&

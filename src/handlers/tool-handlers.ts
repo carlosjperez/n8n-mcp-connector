@@ -6,7 +6,6 @@
 import { n8nClient } from '../clients/n8n-client.js';
 import { logger, LogContext } from '../utils/logger.js';
 import { validator } from '../utils/validator.js';
-import { resilience } from '../utils/resilience.js';
 
 export interface ToolResult {
   success: boolean;

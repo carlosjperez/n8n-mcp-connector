@@ -3,7 +3,7 @@
  * Implements robust input validation with detailed error reporting
  */
 
-import { logger } from './logger.js';
+// Validation utilities
 
 export interface ValidationResult {
   isValid: boolean;
