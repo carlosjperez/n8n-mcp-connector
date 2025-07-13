@@ -1,0 +1,57 @@
+{
+  "models": [],
+  "customCommands": [
+    {
+      "name": "n8n-list-workflows",
+      "prompt": "Lista todos los workflows disponibles en n8n",
+      "description": "Obtiene una lista de todos los workflows de n8n"
+    },
+    {
+      "name": "n8n-execute-workflow",
+      "prompt": "Ejecuta el workflow {workflow_id} con los datos: {data}",
+      "description": "Ejecuta un workflow específico de n8n"
+    }
+  ],
+  "contextProviders": [
+    {
+      "name": "n8n-workflows",
+      "params": {
+        "serverCommand": "npx n8n-mcp-connector",
+        "env": {
+          "N8N_BASE_URL": "https://tu-instancia-n8n.com",
+          "N8N_API_KEY": "tu_api_key_aqui",
+          "NODE_ENV": "production",
+          "LOG_LEVEL": "info"
+        },
+        "description": "Proveedor de contexto para workflows de n8n",
+        "capabilities": [
+          "workflow_execution",
+          "workflow_listing",
+          "execution_monitoring"
+        ]
+      }
+    }
+  ],
+  "slashCommands": [
+    {
+      "name": "n8n",
+      "description": "Comandos de n8n workflow automation",
+      "params": {
+        "serverCommand": "npx n8n-mcp-connector"
+      }
+    }
+  ],
+  "experimental": {
+    "enableMCP": true,
+    "mcpServers": {
+      "n8n-workflows": {
+        "command": "npx",
+        "args": ["n8n-mcp-connector"],
+        "env": {
+          "N8N_BASE_URL": "https://tu-instancia-n8n.com",
+          "N8N_API_KEY": "tu_api_key_aqui"
+        }
+      }
+    }
+  }
+}

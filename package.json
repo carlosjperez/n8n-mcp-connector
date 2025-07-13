@@ -1,6 +1,6 @@
 {
   "name": "n8n-mcp-connector",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Advanced workflow automation connector for n8n platform",
   "main": "dist/index.js",
   "type": "module",
@@ -10,9 +10,13 @@
     "dev": "tsx src/index.ts",
     "clean": "rm -rf dist",
     "prepare": "npm run build",
-    "test": "jest",
+    "test": "tsx src/tests/run-tests.ts",
+    "test:suite": "tsx src/tests/test-suite.ts",
+    "test:watch": "tsx watch src/tests/run-tests.ts",
+    "test:build": "npm run build && node dist/tests/run-tests.js",
     "lint": "eslint src/**/*.ts",
-    "format": "prettier --write src/**/*.ts"
+    "format": "prettier --write src/**/*.ts",
+    "validate": "npm run lint && npm run test && npm run build"
   },
   "bin": {
     "n8n-mcp-connector": "./dist/index.js"

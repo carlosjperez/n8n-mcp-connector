@@ -1,46 +1,53 @@
 #!/usr/bin/env node
 
 /**
- * N8N MCP Server
- * Model Context Protocol server for n8n workflow automation
+ * N8N MCP Server - Advanced Automation Hub
+ * Optimized with modular architecture, resilience, and best practices
+ * Version: 1.1.1
  */
 
-import 'dotenv/config';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
   CallToolRequestSchema,
+  ErrorCode,
   ListToolsRequestSchema,
-  Tool,
+  McpError,
 } from '@modelcontextprotocol/sdk/types.js';
-import axios, { AxiosInstance } from 'axios';
 
-interface N8nConfig {
-  baseUrl: string;
-  apiKey?: string;
-  username?: string;
-  password?: string;
-}
+// Import modular components
+import { config } from './config/config.js';
+import { logger, LogContext } from './utils/logger.js';
+import { resilience } from './utils/resilience.js';
+import { n8nClient } from './clients/n8n-client.js';
+import { toolHandlers } from './handlers/tool-handlers.js';
 
-interface WorkflowExecution {
-  id: string;
-  workflowId: string;
-  status: 'running' | 'success' | 'error' | 'waiting';
-  startedAt: string;
-  stoppedAt?: string;
-  data?: any;
-}
+// Initialize configuration and logging
+logger.info('Starting N8N MCP Server', {
+  version: config.getServerConfig().version,
+  environment: config.getServerConfig().environment,
+  n8nUrl: config.getN8nConfig().baseUrl
+});
 
-class N8nMCPServer {
+/**
+ * Advanced N8N MCP Server with Modular Architecture
+ * Implements best practices for automation, resilience, and maintainability
+ */
+class N8nMcpServer {
   private server: Server;
-  private n8nClient: AxiosInstance;
-  private config: N8nConfig;
+  private startTime: number;
+  private requestCounter = 0;
+  private healthCheckInterval?: NodeJS.Timeout;
 
   constructor() {
+    this.startTime = Date.now();
+    
+    // Initialize MCP Server with enhanced configuration
     this.server = new Server(
       {
-        name: 'n8n-automation-server',
-        version: '1.0.0',
+        name: 'n8n-mcp-server',
+        version: config.getServerConfig().version,
+        description: 'Advanced N8N MCP Server with resilience and best practices'
       },
       {
         capabilities: {
@@ -49,65 +56,62 @@ class N8nMCPServer {
       }
     );
 
-    this.config = this.loadConfig();
-    this.n8nClient = this.createN8nClient();
     this.setupToolHandlers();
     this.setupErrorHandling();
-  }
-
-  private loadConfig(): N8nConfig {
-    const config: N8nConfig = {
-      baseUrl: process.env.N8N_BASE_URL || 'http://localhost:5678',
-      apiKey: process.env.N8N_API_KEY,
-      username: process.env.N8N_USERNAME,
-      password: process.env.N8N_PASSWORD,
-    };
-
-    if (!config.apiKey && (!config.username || !config.password)) {
-      throw new Error('N8N authentication required: Set N8N_API_KEY or N8N_USERNAME/N8N_PASSWORD');
-    }
-
-    return config;
-  }
-
-  private createN8nClient(): AxiosInstance {
-    const client = axios.create({
-      baseURL: this.config.baseUrl,
-      timeout: 30000,
-      headers: {
-        'Content-Type': 'application/json',
-      },
+    this.setupHealthChecks();
+    
+    logger.info('N8N MCP Server initialized successfully', {
+      serverName: 'n8n-mcp-server',
+      version: config.getServerConfig().version,
+      capabilities: ['workflows', 'executions', 'webhooks', 'monitoring']
     });
-
-    // Add authentication
-    if (this.config.apiKey) {
-      client.defaults.headers.common['X-N8N-API-KEY'] = this.config.apiKey;
-    } else if (this.config.username && this.config.password) {
-      const auth = Buffer.from(`${this.config.username}:${this.config.password}`).toString('base64');
-      client.defaults.headers.common['Authorization'] = `Basic ${auth}`;
-    }
-
-    return client;
   }
 
-  private setupToolHandlers() {
-    // List available tools
+  /**
+   * Setup health monitoring and periodic checks
+   */
+  private setupHealthChecks(): void {
+    // Health checks enabled by default in production
+    if (config.getServerConfig().environment === 'production') {
+      this.healthCheckInterval = setInterval(async () => {
+        try {
+          const health = await n8nClient.getInstance().healthCheck();
+          if (health.status === 'unhealthy') {
+            logger.warn('N8N health check failed', { details: health.details });
+          }
+        } catch (error: any) {
+          logger.error('Health check error', { error: error.message });
+        }
+      }, 60000); // Check every minute
+    }
+  }
+
+  /**
+   * Setup tool handlers with enhanced schemas and validation
+   */
+  private setupToolHandlers(): void {
+    // List tools handler with comprehensive tool definitions
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
+      const context: LogContext = { operation: 'list_tools' };
+      logger.debug('Listing available tools', context);
+      
       return {
         tools: [
           {
             name: 'execute_workflow',
-            description: 'Execute an n8n workflow by ID or name',
+            description: 'Execute an n8n workflow by ID or name with advanced options and monitoring',
             inputSchema: {
               type: 'object',
               properties: {
                 workflowId: {
                   type: 'string',
                   description: 'The workflow ID or name to execute',
+                  minLength: 1
                 },
                 data: {
                   type: 'object',
                   description: 'Input data for the workflow (optional)',
+                  additionalProperties: true
                 },
                 waitForCompletion: {
                   type: 'boolean',
@@ -120,7 +124,7 @@ class N8nMCPServer {
           },
           {
             name: 'list_workflows',
-            description: 'List all available workflows',
+            description: 'List all available workflows with filtering and pagination',
             inputSchema: {
               type: 'object',
               properties: {
@@ -133,18 +137,32 @@ class N8nMCPServer {
                   items: { type: 'string' },
                   description: 'Filter by tags (optional)',
                 },
+                limit: {
+                  type: 'number',
+                  description: 'Maximum number of workflows to return',
+                  default: 50,
+                  minimum: 1,
+                  maximum: 200
+                },
+                offset: {
+                  type: 'number',
+                  description: 'Number of workflows to skip',
+                  default: 0,
+                  minimum: 0
+                }
               },
             },
           },
           {
             name: 'get_workflow',
-            description: 'Get detailed information about a specific workflow',
+            description: 'Get detailed information about a specific workflow including nodes and connections',
             inputSchema: {
               type: 'object',
               properties: {
                 workflowId: {
                   type: 'string',
                   description: 'The workflow ID',
+                  minLength: 1
                 },
               },
               required: ['workflowId'],
@@ -152,13 +170,14 @@ class N8nMCPServer {
           },
           {
             name: 'get_execution_status',
-            description: 'Get the status and details of a workflow execution',
+            description: 'Get the status and details of a workflow execution with performance metrics',
             inputSchema: {
               type: 'object',
               properties: {
                 executionId: {
                   type: 'string',
                   description: 'The execution ID',
+                  minLength: 1
                 },
               },
               required: ['executionId'],
@@ -166,7 +185,7 @@ class N8nMCPServer {
           },
           {
             name: 'list_executions',
-            description: 'List recent workflow executions',
+            description: 'List recent workflow executions with filtering, pagination, and statistics',
             inputSchema: {
               type: 'object',
               properties: {
@@ -183,20 +202,28 @@ class N8nMCPServer {
                   type: 'number',
                   description: 'Maximum number of executions to return',
                   default: 10,
+                  minimum: 1,
                   maximum: 100,
                 },
+                offset: {
+                  type: 'number',
+                  description: 'Number of executions to skip',
+                  default: 0,
+                  minimum: 0
+                }
               },
             },
           },
           {
             name: 'activate_workflow',
-            description: 'Activate or deactivate a workflow',
+            description: 'Activate or deactivate a workflow with validation and confirmation',
             inputSchema: {
               type: 'object',
               properties: {
                 workflowId: {
                   type: 'string',
                   description: 'The workflow ID',
+                  minLength: 1
                 },
                 active: {
                   type: 'boolean',
@@ -208,17 +235,19 @@ class N8nMCPServer {
           },
           {
             name: 'create_webhook',
-            description: 'Create a webhook URL for a workflow',
+            description: 'Create a webhook URL for a workflow with custom configuration',
             inputSchema: {
               type: 'object',
               properties: {
                 workflowId: {
                   type: 'string',
                   description: 'The workflow ID',
+                  minLength: 1
                 },
                 path: {
                   type: 'string',
                   description: 'Custom webhook path (optional)',
+                  pattern: '^[a-zA-Z0-9_-]+$'
                 },
                 method: {
                   type: 'string',
@@ -234,366 +263,241 @@ class N8nMCPServer {
       };
     });
 
-    // Handle tool execution
+    // Call tool handler with enhanced error handling and metrics
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const { name, arguments: args } = request.params;
+      const requestId = ++this.requestCounter;
+      const startTime = Date.now();
+      
+      const context: LogContext = {
+        tool: name,
+        requestId,
+        operation: 'tool_call'
+      };
+
+      logger.info('Tool call started', { ...context, args: this.sanitizeArgs(args) });
 
       try {
+        let result;
+        
         switch (name) {
           case 'execute_workflow':
-            return await this.executeWorkflow(args);
+            result = await toolHandlers.executeWorkflow.handle(args as any);
+            break;
           case 'list_workflows':
-            return await this.listWorkflows(args);
+            result = await toolHandlers.listWorkflows.handle(args || {});
+            break;
           case 'get_workflow':
-            return await this.getWorkflow(args);
+            result = await toolHandlers.getWorkflow.handle(args as any);
+            break;
           case 'get_execution_status':
-            return await this.getExecutionStatus(args);
+            result = await toolHandlers.getExecutionStatus.handle(args as any);
+            break;
           case 'list_executions':
-            return await this.listExecutions(args);
+            result = await toolHandlers.listExecutions.handle(args || {});
+            break;
           case 'activate_workflow':
-            return await this.activateWorkflow(args);
+            result = await toolHandlers.activateWorkflow.handle(args as any);
+            break;
           case 'create_webhook':
-            return await this.createWebhook(args);
+            result = await toolHandlers.createWebhook.handle(args as any);
+            break;
           default:
-            throw new Error(`Unknown tool: ${name}`);
+            throw new McpError(
+              ErrorCode.MethodNotFound,
+              `Unknown tool: ${name}. Available tools: execute_workflow, list_workflows, get_workflow, get_execution_status, list_executions, activate_workflow, create_webhook`
+            );
         }
-      } catch (error: any) {
-        // Enhanced error handling with more context
-        const errorMessage = error?.response?.data?.message || error?.message || 'Unknown error';
-        const statusCode = error?.response?.status;
-        const errorDetails = {
-          tool: name,
-          error: errorMessage,
-          statusCode,
-          timestamp: new Date().toISOString()
-        };
+
+        const executionTime = Date.now() - startTime;
         
-        // Log error for debugging
-        console.error(`[N8N MCP] Error in ${name}:`, errorDetails);
-        
+        logger.info('Tool call completed successfully', {
+          ...context,
+          executionTime,
+          success: result.success
+        });
+
+        // Return standardized response
         return {
           content: [
             {
               type: 'text',
-              text: JSON.stringify({
-                error: true,
-                message: `Error executing ${name}: ${errorMessage}`,
-                details: errorDetails
-              }, null, 2),
-            },
-          ],
-          isError: true
+              text: JSON.stringify(result, null, 2)
+            }
+          ]
         };
+        
+      } catch (error: any) {
+        const executionTime = Date.now() - startTime;
+        
+        logger.error('Tool call failed', {
+          ...context,
+          executionTime,
+          error: error.message,
+          stack: error.stack
+        });
+
+        if (error instanceof McpError) {
+          throw error;
+        }
+        
+        // Enhanced error response with context
+        throw new McpError(
+          ErrorCode.InternalError,
+          `Tool '${name}' execution failed: ${error.message}`,
+          {
+            tool: name,
+            requestId,
+            executionTime,
+            timestamp: new Date().toISOString()
+          }
+        );
       }
     });
   }
 
-  private async executeWorkflow(args: any) {
-    const { workflowId, data = {}, waitForCompletion = true } = args;
 
-    if (!workflowId) {
-      throw new Error('workflowId is required');
+
+  /**
+   * Sanitize arguments for logging (remove sensitive data)
+   */
+  private sanitizeArgs(args: any): any {
+    if (!args || typeof args !== 'object') return args;
+    
+    const sanitized = { ...args };
+    const sensitiveKeys = ['password', 'token', 'key', 'secret', 'auth'];
+    
+    for (const key of Object.keys(sanitized)) {
+      if (sensitiveKeys.some(sensitive => key.toLowerCase().includes(sensitive))) {
+        sanitized[key] = '[REDACTED]';
+      }
     }
-
-    // Start workflow execution
-    const response = await this.n8nClient.post(`/api/v1/workflows/${workflowId}/execute`, {
-      data,
-    });
-
-    const executionId = response.data.data.executionId;
-
-    if (!waitForCompletion) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify({
-              executionId,
-              workflowId,
-              status: 'started',
-              message: 'Workflow execution started (not waiting for completion)'
-            }, null, 2),
-          },
-        ],
-      };
-    }
-
-    // Wait for completion
-    let execution: WorkflowExecution;
-    let attempts = 0;
-    const maxAttempts = 60; // 5 minutes with 5-second intervals
-
-    do {
-      await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds
-      const execResponse = await this.n8nClient.get(`/api/v1/executions/${executionId}`);
-      execution = execResponse.data.data;
-      attempts++;
-    } while (execution.status === 'running' && attempts < maxAttempts);
-
-    return {
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify({
-            executionId,
-            workflowId,
-            status: execution.status,
-            result: execution.data,
-            duration: execution.stoppedAt 
-              ? new Date(execution.stoppedAt).getTime() - new Date(execution.startedAt).getTime()
-              : null,
-            timedOut: attempts >= maxAttempts && execution.status === 'running'
-          }, null, 2),
-        },
-      ],
-    };
+    
+    return sanitized;
   }
 
-  private async listWorkflows(args: any) {
-    const { active, tags } = args;
-    let url = '/api/v1/workflows';
-    const params = new URLSearchParams();
-
-    // Fix: Use proper query parameters instead of filter JSON
-    if (typeof active === 'boolean') {
-      params.append('active', active.toString());
-    }
-
-    if (tags && tags.length > 0) {
-      params.append('tags', tags.join(','));
-    }
-
-    if (params.toString()) {
-      url += `?${params.toString()}`;
-    }
-
-    const response = await this.n8nClient.get(url);
-    const workflows = response.data.data;
-    
-    // Return concise summary instead of full workflow data
-    const summary = workflows.map((w: any) => ({
-      id: w.id,
-      name: w.name,
-      active: w.active,
-      isArchived: w.isArchived || false,
-      createdAt: w.createdAt,
-      updatedAt: w.updatedAt,
-      nodeCount: w.nodes?.length || 0
-    }));
-    
-    return {
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify({
-            total: workflows.length,
-            workflows: summary
-          }, null, 2),
-        },
-      ],
-    };
-  }
-
-  private async getWorkflow(args: any) {
-    const { workflowId } = args;
-    const response = await this.n8nClient.get(`/api/v1/workflows/${workflowId}`);
-    const workflow = response.data.data;
-    
-    // Return structured summary instead of raw data
-    const summary = {
-      id: workflow.id,
-      name: workflow.name,
-      active: workflow.active,
-      isArchived: workflow.isArchived || false,
-      createdAt: workflow.createdAt,
-      updatedAt: workflow.updatedAt,
-      nodeCount: workflow.nodes?.length || 0,
-      connectionCount: workflow.connections ? Object.keys(workflow.connections).length : 0,
-      tags: workflow.tags || [],
-      nodes: workflow.nodes?.map((node: any) => ({
-        id: node.id,
-        name: node.name,
-        type: node.type,
-        typeVersion: node.typeVersion
-      })) || []
-    };
-    
-    return {
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify(summary, null, 2),
-        },
-      ],
-    };
-  }
-
-  private async getExecutionStatus(args: any) {
-    const { executionId } = args;
-    const response = await this.n8nClient.get(`/api/v1/executions/${executionId}`);
-    const execution = response.data.data;
-    
-    const duration = execution.stoppedAt && execution.startedAt 
-      ? new Date(execution.stoppedAt).getTime() - new Date(execution.startedAt).getTime()
-      : null;
-    
-    const summary = {
-      id: execution.id,
-      workflowId: execution.workflowId,
-      status: execution.finished ? (execution.stoppedAt ? 'success' : 'error') : 'running',
-      startedAt: execution.startedAt,
-      stoppedAt: execution.stoppedAt,
-      duration: duration ? `${duration}ms` : null,
-      mode: execution.mode,
-      retryOf: execution.retryOf,
-      waitTill: execution.waitTill
-    };
-    
-    return {
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify(summary, null, 2),
-        },
-      ],
-    };
-  }
-
-  private async listExecutions(args: any) {
-    const { workflowId, status, limit = 10 } = args;
-    let url = `/api/v1/executions?limit=${Math.min(limit, 50)}`; // Cap at 50
-    
-    if (workflowId) {
-      url += `&workflowId=${workflowId}`;
-    }
-    
-    if (status) {
-      url += `&status=${status}`;
-    }
-
-    const response = await this.n8nClient.get(url);
-    const executions = response.data.data;
-    
-    // Return enhanced summary with duration and status
-    const summary = executions.map((exec: any) => {
-      const duration = exec.stoppedAt && exec.startedAt 
-        ? new Date(exec.stoppedAt).getTime() - new Date(exec.startedAt).getTime()
-        : null;
-      
-      return {
-        id: exec.id,
-        workflowId: exec.workflowId,
-        status: exec.finished ? (exec.stoppedAt ? 'success' : 'error') : 'running',
-        startedAt: exec.startedAt,
-        stoppedAt: exec.stoppedAt,
-        duration: duration ? `${duration}ms` : null,
-        mode: exec.mode
-      };
-    });
-    
-    return {
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify({
-            total: executions.length,
-            executions: summary
-          }, null, 2),
-        },
-      ],
-    };
-  }
-
-  private async activateWorkflow(args: any) {
-    const { workflowId, active } = args;
-    
-    if (!workflowId) {
-      throw new Error('workflowId is required');
-    }
-    
-    if (typeof active !== 'boolean') {
-      throw new Error('active must be a boolean value');
-    }
-    
-    const response = await this.n8nClient.patch(`/api/v1/workflows/${workflowId}`, {
-      active,
-    });
-    
-    const result = {
-      workflowId: response.data.data.id,
-      name: response.data.data.name,
-      active: response.data.data.active,
-      message: `Workflow ${active ? 'activated' : 'deactivated'} successfully`
-    };
-    
-    return {
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify(result, null, 2),
-        },
-      ],
-    };
-  }
-
-  private async createWebhook(args: any) {
-    const { workflowId, path, method = 'POST' } = args;
-    
-    if (!workflowId) {
-      throw new Error('workflowId is required');
-    }
-    
-    const validMethods = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'];
-    if (!validMethods.includes(method.toUpperCase())) {
-      throw new Error(`Invalid method. Must be one of: ${validMethods.join(', ')}`);
-    }
-    
-    // Generate webhook URL based on n8n's webhook structure
-    const webhookPath = path || `workflow-${workflowId}`;
-    const webhookUrl = `${this.config.baseUrl}/webhook/${webhookPath}`;
-    
-    const result = {
-      webhookUrl,
-      method: method.toUpperCase(),
-      workflowId,
-      path: webhookPath,
-      instructions: [
-        '1. Add a Webhook node to your workflow',
-        '2. Set the webhook path to: ' + webhookPath,
-        '3. Configure the HTTP method to: ' + method.toUpperCase(),
-        '4. Activate the workflow to enable the webhook'
-      ],
-      testCommand: `curl -X ${method.toUpperCase()} "${webhookUrl}" -H "Content-Type: application/json" -d '{}'`
-    };
-    
-    return {
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify(result, null, 2),
-        },
-      ],
-    };
-  }
-
-  private setupErrorHandling() {
+  /**
+   * Setup enhanced error handling with logging and graceful shutdown
+   */
+  private setupErrorHandling(): void {
+    // MCP Server error handler
     this.server.onerror = (error) => {
-      console.error('Server error:', error);
+      logger.error('MCP Server error', {
+        error: error.message,
+        stack: error.stack,
+        timestamp: new Date().toISOString()
+      });
     };
 
-    process.on('SIGINT', async () => {
-      await this.server.close();
-      process.exit(0);
+    // Process error handlers
+    process.on('uncaughtException', (error) => {
+      logger.error('Uncaught exception', {
+        error: error.message,
+        stack: error.stack
+      });
+      this.gracefulShutdown(1);
     });
+
+    process.on('unhandledRejection', (reason, promise) => {
+      logger.error('Unhandled rejection', {
+        reason: String(reason),
+        promise: String(promise)
+      });
+    });
+
+    // Graceful shutdown handlers
+    process.on('SIGINT', () => this.gracefulShutdown(0));
+    process.on('SIGTERM', () => this.gracefulShutdown(0));
   }
 
-  async start() {
-    const transport = new StdioServerTransport();
-    await this.server.connect(transport);
-    console.error('N8N MCP Server running on stdio');
+  /**
+   * Perform graceful shutdown with cleanup
+   */
+  private async gracefulShutdown(exitCode: number): Promise<void> {
+    logger.info('Initiating graceful shutdown', {
+      exitCode,
+      uptime: Date.now() - this.startTime,
+      requestsProcessed: this.requestCounter
+    });
+
+    try {
+      // Clear health check interval
+      if (this.healthCheckInterval) {
+        clearInterval(this.healthCheckInterval);
+      }
+
+      // Close MCP server
+      await this.server.close();
+      
+      logger.info('Graceful shutdown completed');
+    } catch (error: any) {
+      logger.error('Error during shutdown', { error: error.message });
+    } finally {
+      process.exit(exitCode);
+    }
+  }
+
+  /**
+   * Start the MCP server
+   */
+  async start(): Promise<void> {
+    try {
+      const transport = new StdioServerTransport();
+      await this.server.connect(transport);
+      
+      logger.info('N8N MCP Server started successfully', {
+        transport: 'stdio',
+        pid: process.pid,
+        nodeVersion: process.version,
+        platform: process.platform
+      });
+      
+      // Log server capabilities
+      logger.info('Server capabilities initialized', {
+        tools: ['execute_workflow', 'list_workflows', 'get_workflow', 'get_execution_status', 'list_executions', 'activate_workflow', 'create_webhook'],
+        features: ['resilience', 'validation', 'logging', 'health_checks', 'metrics']
+      });
+      
+    } catch (error: any) {
+      logger.error('Failed to start N8N MCP Server', {
+        error: error.message,
+        stack: error.stack
+      });
+      process.exit(1);
+    }
   }
 }
 
-// Start the server
-const server = new N8nMCPServer();
-server.start().catch(console.error);
+/**
+ * Initialize and start the N8N MCP Server
+ */
+async function main(): Promise<void> {
+  try {
+    logger.info('Initializing N8N MCP Server', {
+      version: config.getServerConfig().version,
+      timestamp: new Date().toISOString()
+    });
+
+    const server = new N8nMcpServer();
+    await server.start();
+    
+  } catch (error: any) {
+    logger.error('Failed to initialize N8N MCP Server', {
+      error: error.message,
+      stack: error.stack
+    });
+    process.exit(1);
+  }
+}
+
+// Start the server if this file is run directly
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main().catch((error) => {
+    console.error('Fatal error:', error);
+    process.exit(1);
+  });
+}
+
+// Export for testing and external use
+export { N8nMcpServer };
+export default N8nMcpServer;
