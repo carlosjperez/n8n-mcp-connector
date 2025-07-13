@@ -5,6 +5,7 @@
  * Model Context Protocol server for n8n workflow automation
  */
 
+import 'dotenv/config';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
@@ -256,14 +257,32 @@ class N8nMCPServer {
           default:
             throw new Error(`Unknown tool: ${name}`);
         }
-      } catch (error) {
+      } catch (error: any) {
+        // Enhanced error handling with more context
+        const errorMessage = error?.response?.data?.message || error?.message || 'Unknown error';
+        const statusCode = error?.response?.status;
+        const errorDetails = {
+          tool: name,
+          error: errorMessage,
+          statusCode,
+          timestamp: new Date().toISOString()
+        };
+        
+        // Log error for debugging
+        console.error(`[N8N MCP] Error in ${name}:`, errorDetails);
+        
         return {
           content: [
             {
               type: 'text',
-              text: `Error executing ${name}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+              text: JSON.stringify({
+                error: true,
+                message: `Error executing ${name}: ${errorMessage}`,
+                details: errorDetails
+              }, null, 2),
             },
           ],
+          isError: true
         };
       }
     });
@@ -271,6 +290,10 @@ class N8nMCPServer {
 
   private async executeWorkflow(args: any) {
     const { workflowId, data = {}, waitForCompletion = true } = args;
+
+    if (!workflowId) {
+      throw new Error('workflowId is required');
+    }
 
     // Start workflow execution
     const response = await this.n8nClient.post(`/api/v1/workflows/${workflowId}/execute`, {
@@ -284,7 +307,12 @@ class N8nMCPServer {
         content: [
           {
             type: 'text',
-            text: `Workflow execution started. Execution ID: ${executionId}`,
+            text: JSON.stringify({
+              executionId,
+              workflowId,
+              status: 'started',
+              message: 'Workflow execution started (not waiting for completion)'
+            }, null, 2),
           },
         ],
       };
@@ -308,11 +336,13 @@ class N8nMCPServer {
           type: 'text',
           text: JSON.stringify({
             executionId,
+            workflowId,
             status: execution.status,
             result: execution.data,
             duration: execution.stoppedAt 
               ? new Date(execution.stoppedAt).getTime() - new Date(execution.startedAt).getTime()
               : null,
+            timedOut: attempts >= maxAttempts && execution.status === 'running'
           }, null, 2),
         },
       ],
@@ -324,12 +354,13 @@ class N8nMCPServer {
     let url = '/api/v1/workflows';
     const params = new URLSearchParams();
 
+    // Fix: Use proper query parameters instead of filter JSON
     if (typeof active === 'boolean') {
-      params.append('filter', JSON.stringify({ active }));
+      params.append('active', active.toString());
     }
 
     if (tags && tags.length > 0) {
-      params.append('filter', JSON.stringify({ tags }));
+      params.append('tags', tags.join(','));
     }
 
     if (params.toString()) {
@@ -337,12 +368,27 @@ class N8nMCPServer {
     }
 
     const response = await this.n8nClient.get(url);
+    const workflows = response.data.data;
+    
+    // Return concise summary instead of full workflow data
+    const summary = workflows.map((w: any) => ({
+      id: w.id,
+      name: w.name,
+      active: w.active,
+      isArchived: w.isArchived || false,
+      createdAt: w.createdAt,
+      updatedAt: w.updatedAt,
+      nodeCount: w.nodes?.length || 0
+    }));
     
     return {
       content: [
         {
           type: 'text',
-          text: JSON.stringify(response.data.data, null, 2),
+          text: JSON.stringify({
+            total: workflows.length,
+            workflows: summary
+          }, null, 2),
         },
       ],
     };
@@ -351,12 +397,32 @@ class N8nMCPServer {
   private async getWorkflow(args: any) {
     const { workflowId } = args;
     const response = await this.n8nClient.get(`/api/v1/workflows/${workflowId}`);
+    const workflow = response.data.data;
+    
+    // Return structured summary instead of raw data
+    const summary = {
+      id: workflow.id,
+      name: workflow.name,
+      active: workflow.active,
+      isArchived: workflow.isArchived || false,
+      createdAt: workflow.createdAt,
+      updatedAt: workflow.updatedAt,
+      nodeCount: workflow.nodes?.length || 0,
+      connectionCount: workflow.connections ? Object.keys(workflow.connections).length : 0,
+      tags: workflow.tags || [],
+      nodes: workflow.nodes?.map((node: any) => ({
+        id: node.id,
+        name: node.name,
+        type: node.type,
+        typeVersion: node.typeVersion
+      })) || []
+    };
     
     return {
       content: [
         {
           type: 'text',
-          text: JSON.stringify(response.data.data, null, 2),
+          text: JSON.stringify(summary, null, 2),
         },
       ],
     };
@@ -365,12 +431,29 @@ class N8nMCPServer {
   private async getExecutionStatus(args: any) {
     const { executionId } = args;
     const response = await this.n8nClient.get(`/api/v1/executions/${executionId}`);
+    const execution = response.data.data;
+    
+    const duration = execution.stoppedAt && execution.startedAt 
+      ? new Date(execution.stoppedAt).getTime() - new Date(execution.startedAt).getTime()
+      : null;
+    
+    const summary = {
+      id: execution.id,
+      workflowId: execution.workflowId,
+      status: execution.finished ? (execution.stoppedAt ? 'success' : 'error') : 'running',
+      startedAt: execution.startedAt,
+      stoppedAt: execution.stoppedAt,
+      duration: duration ? `${duration}ms` : null,
+      mode: execution.mode,
+      retryOf: execution.retryOf,
+      waitTill: execution.waitTill
+    };
     
     return {
       content: [
         {
           type: 'text',
-          text: JSON.stringify(response.data.data, null, 2),
+          text: JSON.stringify(summary, null, 2),
         },
       ],
     };
@@ -378,7 +461,7 @@ class N8nMCPServer {
 
   private async listExecutions(args: any) {
     const { workflowId, status, limit = 10 } = args;
-    let url = `/api/v1/executions?limit=${limit}`;
+    let url = `/api/v1/executions?limit=${Math.min(limit, 50)}`; // Cap at 50
     
     if (workflowId) {
       url += `&workflowId=${workflowId}`;
@@ -389,12 +472,33 @@ class N8nMCPServer {
     }
 
     const response = await this.n8nClient.get(url);
+    const executions = response.data.data;
+    
+    // Return enhanced summary with duration and status
+    const summary = executions.map((exec: any) => {
+      const duration = exec.stoppedAt && exec.startedAt 
+        ? new Date(exec.stoppedAt).getTime() - new Date(exec.startedAt).getTime()
+        : null;
+      
+      return {
+        id: exec.id,
+        workflowId: exec.workflowId,
+        status: exec.finished ? (exec.stoppedAt ? 'success' : 'error') : 'running',
+        startedAt: exec.startedAt,
+        stoppedAt: exec.stoppedAt,
+        duration: duration ? `${duration}ms` : null,
+        mode: exec.mode
+      };
+    });
     
     return {
       content: [
         {
           type: 'text',
-          text: JSON.stringify(response.data.data, null, 2),
+          text: JSON.stringify({
+            total: executions.length,
+            executions: summary
+          }, null, 2),
         },
       ],
     };
@@ -403,15 +507,30 @@ class N8nMCPServer {
   private async activateWorkflow(args: any) {
     const { workflowId, active } = args;
     
+    if (!workflowId) {
+      throw new Error('workflowId is required');
+    }
+    
+    if (typeof active !== 'boolean') {
+      throw new Error('active must be a boolean value');
+    }
+    
     const response = await this.n8nClient.patch(`/api/v1/workflows/${workflowId}`, {
       active,
     });
+    
+    const result = {
+      workflowId: response.data.data.id,
+      name: response.data.data.name,
+      active: response.data.data.active,
+      message: `Workflow ${active ? 'activated' : 'deactivated'} successfully`
+    };
     
     return {
       content: [
         {
           type: 'text',
-          text: `Workflow ${workflowId} ${active ? 'activated' : 'deactivated'} successfully.`,
+          text: JSON.stringify(result, null, 2),
         },
       ],
     };
@@ -420,20 +539,38 @@ class N8nMCPServer {
   private async createWebhook(args: any) {
     const { workflowId, path, method = 'POST' } = args;
     
-    // Note: This is a simplified implementation
-    // In practice, you'd need to modify the workflow to add a webhook node
-    const webhookUrl = `${this.config.baseUrl}/webhook/${path || workflowId}`;
+    if (!workflowId) {
+      throw new Error('workflowId is required');
+    }
+    
+    const validMethods = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'];
+    if (!validMethods.includes(method.toUpperCase())) {
+      throw new Error(`Invalid method. Must be one of: ${validMethods.join(', ')}`);
+    }
+    
+    // Generate webhook URL based on n8n's webhook structure
+    const webhookPath = path || `workflow-${workflowId}`;
+    const webhookUrl = `${this.config.baseUrl}/webhook/${webhookPath}`;
+    
+    const result = {
+      webhookUrl,
+      method: method.toUpperCase(),
+      workflowId,
+      path: webhookPath,
+      instructions: [
+        '1. Add a Webhook node to your workflow',
+        '2. Set the webhook path to: ' + webhookPath,
+        '3. Configure the HTTP method to: ' + method.toUpperCase(),
+        '4. Activate the workflow to enable the webhook'
+      ],
+      testCommand: `curl -X ${method.toUpperCase()} "${webhookUrl}" -H "Content-Type: application/json" -d '{}'`
+    };
     
     return {
       content: [
         {
           type: 'text',
-          text: JSON.stringify({
-            webhookUrl,
-            method,
-            workflowId,
-            note: 'Ensure your workflow has a Webhook node configured for this path',
-          }, null, 2),
+          text: JSON.stringify(result, null, 2),
         },
       ],
     };

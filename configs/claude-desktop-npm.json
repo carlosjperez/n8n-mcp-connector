@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "n8n-workflows": {
+      "command": "npx",
+      "args": ["n8n-mcp-connector@latest"],
+      "env": {
+        "N8N_BASE_URL": "https://tu-instancia-n8n.com",
+        "N8N_API_KEY": "tu_api_key_aqui"
+      }
+    }
+  }
+}

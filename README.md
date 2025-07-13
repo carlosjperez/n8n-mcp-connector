@@ -9,11 +9,27 @@ Advanced Model Context Protocol server for seamless n8n workflow integration and
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Node.js 18+ 
 - Active n8n instance
 - API access configured in n8n
+- Claude Desktop installed
 
-### Installation
+### 📦 Instalación Remota (Recomendado)
+
+#### Opción A: NPM Global
+```bash
+# Instalación automática
+curl -fsSL https://raw.githubusercontent.com/carlosjperez/n8n-mcp-connector/main/install-remote.sh | bash
+# Selecciona opción 1 (NPM Global)
+```
+
+#### Opción B: MCP.so
+```bash
+# Instalación automática
+curl -fsSL https://raw.githubusercontent.com/carlosjperez/n8n-mcp-connector/main/install-remote.sh | bash
+# Selecciona opción 2 (MCP.so)
+```
+
+### 🔧 Instalación Local (Desarrollo)
 
 ```bash
 # Clone repository
@@ -48,7 +64,41 @@ N8N_PASSWORD=your_password
 
 ### Claude Desktop Integration
 
-Add to your Claude Desktop MCP configuration:
+#### 📦 Configuración NPM Global (Sin instalación local)
+
+```json
+{
+  "mcpServers": {
+    "n8n-workflows": {
+      "command": "npx",
+      "args": ["n8n-mcp-connector"],
+      "env": {
+        "N8N_BASE_URL": "https://tu-instancia-n8n.com",
+        "N8N_API_KEY": "tu_api_key_aqui"
+      }
+    }
+  }
+}
+```
+
+#### ☁️ Configuración MCP.so (Totalmente remoto)
+
+```json
+{
+  "mcpServers": {
+    "n8n-workflows": {
+      "command": "mcp",
+      "args": ["install", "n8n-workflows/carlosjperez"],
+      "env": {
+        "N8N_BASE_URL": "https://tu-instancia-n8n.com",
+        "N8N_API_KEY": "tu_api_key_aqui"
+      }
+    }
+  }
+}
+```
+
+#### 🔧 Configuración Local (Desarrollo)
 
 ```json
 {

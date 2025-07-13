@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "n8n-workflows": {
+      "command": "mcp",
+      "args": ["install", "n8n-workflows/carlosjperez"],
+      "env": {
+        "N8N_BASE_URL": "https://tu-instancia-n8n.com",
+        "N8N_API_KEY": "tu_api_key_aqui"
+      }
+    }
+  }
+}
