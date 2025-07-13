@@ -21,6 +21,7 @@ import { logger, LogContext } from './utils/logger.js';
 import { resilience } from './utils/resilience.js';
 import { n8nClient } from './clients/n8n-client.js';
 import { toolHandlers } from './handlers/tool-handlers.js';
+import { advancedToolHandlers } from './handlers/advanced-tool-handlers.js';
 
 // Initialize configuration and logging
 logger.info('Starting N8N MCP Server', {
@@ -259,6 +260,172 @@ class N8nMcpServer {
               required: ['workflowId'],
             },
           },
+          // === ADVANCED WORKFLOW MANAGEMENT TOOLS ===
+          {
+            name: 'create_node',
+            description: 'Create a new node in a workflow with advanced configuration options',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                workflowId: {
+                  type: 'string',
+                  description: 'The workflow ID',
+                  minLength: 1
+                },
+                node: {
+                  type: 'object',
+                  description: 'Node configuration',
+                  properties: {
+                    name: { type: 'string', description: 'Node name' },
+                    type: { type: 'string', description: 'Node type (e.g., "n8n-nodes-base.httpRequest")' },
+                    typeVersion: { type: 'number', description: 'Node type version', default: 1 },
+                    parameters: { type: 'object', description: 'Node parameters', additionalProperties: true },
+                    credentials: { type: 'object', description: 'Node credentials mapping', additionalProperties: true },
+                    disabled: { type: 'boolean', description: 'Whether node is disabled', default: false }
+                  },
+                  required: ['name', 'type']
+                },
+                position: {
+                  type: 'array',
+                  description: 'Node position [x, y]',
+                  items: { type: 'number' },
+                  minItems: 2,
+                  maxItems: 2
+                },
+                autoConnect: {
+                  type: 'boolean',
+                  description: 'Automatically connect to target node',
+                  default: false
+                },
+                targetNodeId: {
+                  type: 'string',
+                  description: 'Target node ID for auto-connection'
+                }
+              },
+              required: ['workflowId', 'node']
+            }
+          },
+          {
+            name: 'update_node',
+            description: 'Update an existing node in a workflow',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                workflowId: {
+                  type: 'string',
+                  description: 'The workflow ID',
+                  minLength: 1
+                },
+                nodeId: {
+                  type: 'string',
+                  description: 'The node ID to update',
+                  minLength: 1
+                },
+                updates: {
+                  type: 'object',
+                  description: 'Node updates to apply',
+                  properties: {
+                    name: { type: 'string', description: 'New node name' },
+                    parameters: { type: 'object', description: 'Updated node parameters', additionalProperties: true },
+                    credentials: { type: 'object', description: 'Updated credentials mapping', additionalProperties: true },
+                    disabled: { type: 'boolean', description: 'Update disabled status' },
+                    position: { type: 'array', items: { type: 'number' }, minItems: 2, maxItems: 2 }
+                  },
+                  additionalProperties: true
+                }
+              },
+              required: ['workflowId', 'nodeId', 'updates']
+            }
+          },
+          {
+            name: 'delete_node',
+            description: 'Delete a node from a workflow',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                workflowId: {
+                  type: 'string',
+                  description: 'The workflow ID',
+                  minLength: 1
+                },
+                nodeId: {
+                  type: 'string',
+                  description: 'The node ID to delete',
+                  minLength: 1
+                },
+                cascadeDelete: {
+                  type: 'boolean',
+                  description: 'Delete all connections to/from this node',
+                  default: true
+                }
+              },
+              required: ['workflowId', 'nodeId']
+            }
+          },
+          {
+            name: 'create_connection',
+            description: 'Create a connection between two nodes in a workflow',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                workflowId: {
+                  type: 'string',
+                  description: 'The workflow ID',
+                  minLength: 1
+                },
+                connection: {
+                  type: 'object',
+                  description: 'Connection configuration',
+                  properties: {
+                    sourceNodeId: { type: 'string', description: 'Source node ID' },
+                    sourceOutputIndex: { type: 'number', description: 'Source output index', default: 0 },
+                    targetNodeId: { type: 'string', description: 'Target node ID' },
+                    targetInputIndex: { type: 'number', description: 'Target input index', default: 0 },
+                    type: { type: 'string', enum: ['main', 'ai'], description: 'Connection type', default: 'main' }
+                  },
+                  required: ['sourceNodeId', 'targetNodeId']
+                }
+              },
+              required: ['workflowId', 'connection']
+            }
+          },
+          {
+            name: 'delete_connection',
+            description: 'Delete a connection between two nodes in a workflow',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                workflowId: {
+                  type: 'string',
+                  description: 'The workflow ID',
+                  minLength: 1
+                },
+                sourceNodeId: {
+                  type: 'string',
+                  description: 'Source node ID',
+                  minLength: 1
+                },
+                sourceOutputIndex: {
+                  type: 'number',
+                  description: 'Source output index',
+                  default: 0,
+                  minimum: 0
+                },
+                targetNodeId: {
+                  type: 'string',
+                  description: 'Target node ID',
+                  minLength: 1
+                },
+                targetInputIndex: {
+                  type: 'number',
+                  description: 'Target input index',
+                  default: 0,
+                  minimum: 0
+                }
+              },
+              required: ['workflowId', 'sourceNodeId', 'targetNodeId']
+            }
+          }
         ],
       };
     });
@@ -302,10 +469,26 @@ class N8nMcpServer {
           case 'create_webhook':
             result = await toolHandlers.createWebhook.handle(args as any);
             break;
+          // Advanced workflow management tools
+          case 'create_node':
+            result = await advancedToolHandlers.createNode.handle(args as any);
+            break;
+          case 'update_node':
+            result = await advancedToolHandlers.updateNode.handle(args as any);
+            break;
+          case 'delete_node':
+            result = await advancedToolHandlers.deleteNode.handle(args as any);
+            break;
+          case 'create_connection':
+            result = await advancedToolHandlers.createConnection.handle(args as any);
+            break;
+          case 'delete_connection':
+            result = await advancedToolHandlers.deleteConnection.handle(args as any);
+            break;
           default:
             throw new McpError(
               ErrorCode.MethodNotFound,
-              `Unknown tool: ${name}. Available tools: execute_workflow, list_workflows, get_workflow, get_execution_status, list_executions, activate_workflow, create_webhook`
+              `Unknown tool: ${name}. Available tools: execute_workflow, list_workflows, get_workflow, get_execution_status, list_executions, activate_workflow, create_webhook, create_node, update_node, delete_node, create_connection, delete_connection`
             );
         }
 

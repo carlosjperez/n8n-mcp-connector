@@ -4,7 +4,6 @@
  */
 
 import { logger } from '../utils/logger.js';
-import { validator } from '../utils/validator.js';
 
 export interface N8nConfig {
   baseUrl: string;
