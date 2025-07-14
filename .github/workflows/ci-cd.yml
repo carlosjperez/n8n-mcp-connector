@@ -66,8 +66,6 @@ jobs:
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
         script: |
-          const { context } = require('@actions/github');
-          
           // Extract error information
           const workflowRun = context.payload.workflow_run || context.runId;
           const commitMessage = context.payload.head_commit?.message || 'Unknown commit';

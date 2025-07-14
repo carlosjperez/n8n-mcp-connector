@@ -24,8 +24,6 @@ jobs:
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
         script: |
-          const { context } = require('@actions/github');
-          
           // Function to create Linear issue
           async function createLinearIssue(title, description, priority = 'medium', labels = []) {
             const linearData = {
