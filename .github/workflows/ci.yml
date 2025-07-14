@@ -82,7 +82,7 @@ jobs:
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
         script: |
-          const { context } = require('@actions/github');
+          // context is already available, no need to redeclare
           const tagName = `v${context.runNumber}`;
           const releaseName = `Release v${context.runNumber}`;
           
