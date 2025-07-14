@@ -5,6 +5,11 @@
 
 set -e
 
+# Importar y usar el detector de runner
+source "$(dirname "$0")/scripts/detect-runner.sh"
+RUNNER=$(detect_runner)
+echo "🏃 Runner detectado: $RUNNER"
+
 echo "🚀 N8N MCP Connector - Instalación Universal"
 echo "============================================"
 echo ""
@@ -50,11 +55,11 @@ configure_agent() {
             local config_file="$config_dir/config.json"
             mkdir -p "$config_dir"
             
-            cat > "$config_file" << 'EOF'
+            cat > "$config_file" << EOF
 {
   "mcpServers": {
     "n8n-workflows": {
-      "command": "npx",
+      "command": "$RUNNER",
       "args": ["n8n-mcp-connector@latest"],
       "env": {
         "N8N_BASE_URL": "https://tu-instancia-n8n.com",
@@ -80,11 +85,11 @@ EOF
                 cp "$config_file" "$config_file.backup.$(date +%Y%m%d_%H%M%S)"
             fi
             
-            cat > "$config_file" << 'EOF'
+            cat > "$config_file" << EOF
 {
   "mcpServers": {
     "n8n-workflows": {
-      "command": "npx",
+      "command": "$RUNNER",
       "args": ["n8n-mcp-connector@latest"],
       "env": {
         "N8N_BASE_URL": "https://tu-instancia-n8n.com",
@@ -108,7 +113,7 @@ EOF
                 cp "$config_file" "$config_file.backup.$(date +%Y%m%d_%H%M%S)"
             fi
             
-            cat > "$config_file" << 'EOF'
+            cat > "$config_file" << EOF
 {
   "models": [],
   "customCommands": [],
@@ -116,7 +121,7 @@ EOF
     {
       "name": "n8n-workflows",
       "params": {
-        "serverCommand": "npx n8n-mcp-connector",
+        "serverCommand": "$RUNNER n8n-mcp-connector",
         "env": {
           "N8N_BASE_URL": "https://tu-instancia-n8n.com",
           "N8N_API_KEY": "tu_api_key_aqui"
@@ -128,7 +133,7 @@ EOF
     "enableMCP": true,
     "mcpServers": {
       "n8n-workflows": {
-        "command": "npx",
+        "command": "$RUNNER",
         "args": ["n8n-mcp-connector"],
         "env": {
           "N8N_BASE_URL": "https://tu-instancia-n8n.com",
@@ -148,11 +153,11 @@ EOF
             local config_file="$config_dir/mcp-config.json"
             mkdir -p "$config_dir"
             
-            cat > "$config_file" << 'EOF'
+            cat > "$config_file" << EOF
 {
   "mcpServers": {
     "n8n-workflows": {
-      "command": "npx",
+      "command": "$RUNNER",
       "args": ["n8n-mcp-connector@latest"],
       "env": {
         "N8N_BASE_URL": "https://tu-instancia-n8n.com",

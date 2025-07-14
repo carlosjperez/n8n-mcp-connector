@@ -5,6 +5,11 @@
 
 set -e
 
+# Importar y usar el detector de runner
+source "$(dirname "$0")/scripts/detect-runner.sh"
+RUNNER=$(detect_runner)
+echo "🏃 Runner detectado: $RUNNER"
+
 echo "🚀 N8N MCP Connector - Instalación Remota"
 echo "==========================================="
 echo ""
@@ -33,11 +38,11 @@ fi
 case $choice in
     1)
         echo "📦 Configurando para NPM Global..."
-        cat > "$CLAUDE_CONFIG_FILE" << 'EOF'
+        cat > "$CLAUDE_CONFIG_FILE" << EOF
 {
   "mcpServers": {
     "n8n-workflows": {
-      "command": "npx",
+      "command": "$RUNNER",
       "args": ["n8n-mcp-connector"],
       "env": {
         "N8N_BASE_URL": "https://tu-instancia-n8n.com",

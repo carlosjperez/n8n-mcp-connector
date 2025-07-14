@@ -68,9 +68,12 @@ echo "==================== VERIFICACIÓN SISTEMA ===================="
 # Verify Zed installation
 run_test "Zed instalado" "command -v zed"
 
-# Verify Node.js and npx
+# Verify Node.js and a runner
+source "$(dirname "$0")/scripts/detect-runner.sh"
+RUNNER=$(detect_runner)
+echo "🏃 Runner detectado: $RUNNER"
 run_test "Node.js disponible" "command -v node"
-run_test "NPX disponible" "command -v npx"
+run_test "Runner ($RUNNER) disponible" "command -v $RUNNER"
 
 # Verify Docker availability
 if command -v docker &> /dev/null && docker info &> /dev/null; then
@@ -182,7 +185,7 @@ fi
 
 # Test mcp-remote package availability
 print_test "Disponibilidad de mcp-remote"
-if npx -y mcp-remote --help &> /dev/null 2>&1; then
+if $RUNNER -y mcp-remote --help &> /dev/null 2>&1; then
     print_success "mcp-remote responde correctamente"
     ((TESTS_PASSED++))
 else

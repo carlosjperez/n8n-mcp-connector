@@ -8,7 +8,9 @@
 
 ## 🔧 Configuración Inmediata para Claude Desktop
 
-### Opción 1: NPM Global (Sin instalación local)
+### Opción 1: Ejecución Remota (Sin instalación local)
+
+**Nota:** El sistema detectará automáticamente el mejor ejecutor de paquetes disponible (`uvx`, `npx`, `npm`). El comando `npx` se usa aquí como ejemplo.
 
 ```json
 {
@@ -136,21 +138,21 @@ Una vez configurado, tendrás acceso a:
 
 ## 🔄 Actualizaciones
 
-El paquete se actualiza automáticamente cuando uses `@latest`. Para forzar una actualización:
+El paquete se actualiza automáticamente cuando uses `@latest`. Para forzar una actualización, puedes limpiar la caché de tu ejecutor de paquetes.
 
 ```bash
-# Limpiar caché de npx
+# Ejemplo para limpiar caché de npx
 npx clear-npx-cache
 
-# O usar versión específica
-npx n8n-mcp-connector@1.0.0
+# Ejemplo para usar una versión específica con un runner determinado
+RUNNER=npx n8n-mcp-connector@1.0.0
 ```
 
 ## 🆘 Solución de Problemas
 
 ### Error: "Command not found"
-- Asegúrate de tener Node.js instalado
-- Verifica que npx esté disponible: `npx --version`
+- Asegúrate de tener Node.js instalado.
+- Verifica que un ejecutor de paquetes esté disponible en tu PATH: `uvx --version`, `npx --version`, o `npm --version`.
 
 ### Error: "N8N authentication required"
 - Verifica que `N8N_BASE_URL` sea correcta
