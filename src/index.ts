@@ -16,18 +16,21 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 
 // Import modular components
-import { config } from './config/config.js';
+import { appConfig, serverConfig, monitoringConfig } from './config/index.js';
 import { logger, LogContext } from './utils/logger.js';
 import { resilience } from './utils/resilience.js';
+import { metrics, healthChecker, performanceMonitor } from './utils/metrics.js';
 import { n8nClient } from './clients/n8n-client.js';
 import { toolHandlers } from './handlers/tool-handlers.js';
 import { advancedToolHandlers } from './handlers/advanced-tool-handlers.js';
 
 // Initialize configuration and logging
 logger.info('Starting N8N MCP Server', {
-  version: config.getServerConfig().version,
-  environment: config.getServerConfig().environment,
-  n8nUrl: config.getN8nConfig().baseUrl
+  version: '2.0.0',
+  environment: serverConfig.environment,
+  n8nUrl: appConfig.n8n.baseUrl,
+  cacheEnabled: true,
+  monitoringEnabled: monitoringConfig.enabled
 });
 
 /**
@@ -38,7 +41,7 @@ class N8nMcpServer {
   private server: Server;
   private startTime: number;
   private requestCounter = 0;
-  private healthCheckInterval?: NodeJS.Timeout;
+  private healthCheckInterval?: ReturnType<typeof setInterval>;
 
   constructor() {
     this.startTime = Date.now();
@@ -47,8 +50,8 @@ class N8nMcpServer {
     this.server = new Server(
       {
         name: 'n8n-mcp-server',
-        version: config.getServerConfig().version,
-        description: 'Advanced N8N MCP Server with resilience and best practices'
+        version: '2.0.0',
+        description: 'Advanced N8N MCP Server with caching, metrics, and resilience'
       },
       {
         capabilities: {
@@ -60,11 +63,12 @@ class N8nMcpServer {
     this.setupToolHandlers();
     this.setupErrorHandling();
     this.setupHealthChecks();
+    this.setupMonitoring();
     
     logger.info('N8N MCP Server initialized successfully', {
       serverName: 'n8n-mcp-server',
-      version: config.getServerConfig().version,
-      capabilities: ['workflows', 'executions', 'webhooks', 'monitoring']
+      version: '2.0.0',
+      capabilities: ['workflows', 'executions', 'webhooks', 'monitoring', 'caching', 'metrics']
     });
   }
 
@@ -73,7 +77,7 @@ class N8nMcpServer {
    */
   private setupHealthChecks(): void {
     // Health checks enabled by default in production
-    if (config.getServerConfig().environment === 'production') {
+    if (serverConfig.environment === 'production') {
       this.healthCheckInterval = setInterval(async () => {
         try {
           const health = await n8nClient.getInstance().healthCheck();
@@ -83,7 +87,29 @@ class N8nMcpServer {
         } catch (error: any) {
           logger.error('Health check error', { error: error.message });
         }
-      }, 60000); // Check every minute
+      }, monitoringConfig.healthCheckInterval);
+    }
+  }
+
+  /**
+   * Setup monitoring and metrics collection
+   */
+  private setupMonitoring(): void {
+    if (monitoringConfig.enabled) {
+      // Start metrics collection
+      setInterval(() => {
+        const stats = metrics.getAllMetrics();
+        logger.debug('Metrics collected', stats);
+      }, monitoringConfig.metricsInterval);
+
+      // Start performance monitoring
+      performanceMonitor.start();
+      
+      logger.info('Monitoring and metrics enabled', {
+        metricsInterval: monitoringConfig.metricsInterval,
+        healthCheckInterval: monitoringConfig.healthCheckInterval,
+        performanceThreshold: monitoringConfig.performanceThreshold
+      });
     }
   }
 
@@ -657,7 +683,7 @@ class N8nMcpServer {
 async function main(): Promise<void> {
   try {
     logger.info('Initializing N8N MCP Server', {
-      version: config.getServerConfig().version,
+      version: '2.0.0',
       timestamp: new Date().toISOString()
     });
 

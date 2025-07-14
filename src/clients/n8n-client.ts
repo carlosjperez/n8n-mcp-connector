@@ -8,6 +8,8 @@ import { logger, LogContext } from '../utils/logger.js';
 import { resilience } from '../utils/resilience.js';
 import { validator } from '../utils/validator.js';
 import { config, N8nConfig } from '../config/config.js';
+import { workflowCache, executionCache } from '../utils/cache.js';
+import { metrics } from '../utils/metrics.js';
 
 export interface N8nApiResponse<T = any> {
   data: T;
@@ -67,6 +69,7 @@ export class N8nClient {
   private client: AxiosInstance;
   private config: N8nConfig;
   private requestCounter = 0;
+  private connectionPool = new Map<string, AxiosInstance>();
 
   constructor() {
     this.config = config.getN8nConfig();
@@ -102,6 +105,12 @@ export class N8nClient {
         const requestId = `req_${++this.requestCounter}_${Date.now()}`;
         (config as any).metadata = { requestId, startTime: Date.now() };
         
+        // Update metrics
+        metrics.incrementCounter('n8n_requests_total', 1, {
+          method: config.method?.toUpperCase() || 'UNKNOWN',
+          endpoint: this.sanitizeEndpoint(config.url || '')
+        });
+        
         logger.debug('N8N API request started', {
           requestId,
           method: config.method?.toUpperCase(),
@@ -112,6 +121,7 @@ export class N8nClient {
         return config;
       },
       (error) => {
+        metrics.incrementCounter('n8n_request_errors_total', 1, { type: 'setup' });
         logger.error('N8N API request setup failed', { error: error.message });
         return Promise.reject(error);
       }
@@ -122,6 +132,13 @@ export class N8nClient {
       (response) => {
         const requestId = (response.config as any).metadata?.requestId;
         const duration = Date.now() - ((response.config as any).metadata?.startTime || 0);
+        
+        // Record metrics
+        metrics.recordHistogram('n8n_request_duration_seconds', duration / 1000, {
+          method: response.config.method?.toUpperCase() || 'UNKNOWN',
+          status: response.status.toString(),
+          endpoint: this.sanitizeEndpoint(response.config.url || '')
+        });
         
         logger.debug('N8N API request completed', {
           requestId,
@@ -136,6 +153,18 @@ export class N8nClient {
         const requestId = error.config?.metadata?.requestId;
         const duration = Date.now() - (error.config?.metadata?.startTime || 0);
         
+        // Record error metrics
+        metrics.incrementCounter('n8n_request_errors_total', 1, {
+          type: 'response',
+          status: error.response?.status?.toString() || 'unknown'
+        });
+        
+        metrics.recordHistogram('n8n_request_duration_seconds', duration / 1000, {
+          method: error.config?.method?.toUpperCase() || 'UNKNOWN',
+          status: error.response?.status?.toString() || 'error',
+          endpoint: this.sanitizeEndpoint(error.config?.url || '')
+        });
+        
         logger.warn('N8N API request failed', {
           requestId,
           status: error.response?.status,
@@ -147,6 +176,14 @@ export class N8nClient {
         return Promise.reject(this.enhanceError(error));
       }
     );
+  }
+
+  private sanitizeEndpoint(url: string): string {
+    // Remove IDs and sensitive data from URL for metrics
+    return url
+      .replace(/\/[a-f0-9-]{36}\//g, '/{id}/')
+      .replace(/\/\d+\//g, '/{id}/')
+      .replace(/\?.*$/, '');
   }
 
   private enhanceError(error: any): Error {
@@ -317,6 +354,19 @@ export class N8nClient {
   } = {}): Promise<WorkflowSummary[]> {
     const context: LogContext = { operation: 'listWorkflows' };
     
+    // Create cache key based on filters
+    const cacheKey = `workflows:list:${JSON.stringify(filters)}`;
+    
+    // Try to get from cache first
+    const cached = workflowCache.get(cacheKey) as WorkflowSummary[] | undefined;
+    if (cached) {
+      metrics.incrementCounter('cache_hits_total', 1, { cache: 'workflows', operation: 'list' });
+      logger.debug('Workflows retrieved from cache', { ...context, cacheKey });
+      return cached;
+    }
+    
+    metrics.incrementCounter('cache_misses_total', 1, { cache: 'workflows', operation: 'list' });
+    
     // Validate pagination
     const paginationValidation = validator.validatePagination(filters.limit, filters.offset);
     if (!paginationValidation.isValid) {
@@ -340,7 +390,7 @@ export class N8nClient {
 
     const workflows = response.data || [];
     
-    return workflows.map((workflow: any) => ({
+    const result = workflows.map((workflow: any) => ({
       id: workflow.id || '',
       name: workflow.name || 'Unnamed Workflow',
       active: workflow.active || false,
@@ -350,6 +400,11 @@ export class N8nClient {
       nodeCount: workflow.nodes?.length || 0,
       tags: workflow.tags || []
     }));
+
+    // Cache the result with shorter TTL for list operations
+    workflowCache.set(cacheKey, result, 300000); // 5 minutes
+
+    return result;
   }
 
   /**
@@ -357,6 +412,17 @@ export class N8nClient {
    */
   async getWorkflow(workflowId: string): Promise<WorkflowDetails> {
     const context: LogContext = { operation: 'getWorkflow', workflowId };
+    
+    // Check cache first
+    const cacheKey = `workflow:${workflowId}`;
+    const cached = workflowCache.get(cacheKey) as WorkflowDetails | undefined;
+    if (cached) {
+      metrics.incrementCounter('cache_hits_total', 1, { cache: 'workflows', operation: 'get' });
+      logger.debug('Workflow retrieved from cache', { ...context, cacheKey });
+      return cached;
+    }
+    
+    metrics.incrementCounter('cache_misses_total', 1, { cache: 'workflows', operation: 'get' });
     
     // Validate workflow ID
     const validation = validator.validateWorkflowId(workflowId);
@@ -379,7 +445,7 @@ export class N8nClient {
       throw new Error(`Workflow ${workflowId} not found`);
     }
 
-    return {
+    const result = {
       id: workflow.id || workflowId,
       name: workflow.name || 'Unnamed Workflow',
       active: workflow.active || false,
@@ -398,6 +464,11 @@ export class N8nClient {
       tags: workflow.tags || [],
       versionId: workflow.versionId
     };
+
+    // Cache the workflow details with longer TTL
+    workflowCache.set(cacheKey, result, 600000); // 10 minutes
+
+    return result;
   }
 
   /**
@@ -405,6 +476,19 @@ export class N8nClient {
    */
   async getExecutionStatus(executionId: string): Promise<ExecutionSummary> {
     const context: LogContext = { operation: 'getExecutionStatus', executionId };
+    
+    // For completed executions, check cache
+    const cacheKey = `execution:${executionId}`;
+    const cached = executionCache.get(cacheKey) as ExecutionSummary | undefined;
+    if (cached && ['success', 'error'].includes(cached.status)) {
+      metrics.incrementCounter('cache_hits_total', 1, { cache: 'executions', operation: 'get' });
+      logger.debug('Execution status retrieved from cache', { ...context, cacheKey });
+      return cached;
+    }
+    
+    if (!cached) {
+      metrics.incrementCounter('cache_misses_total', 1, { cache: 'executions', operation: 'get' });
+    }
     
     logger.debug('Getting execution status', context);
 
@@ -425,16 +509,24 @@ export class N8nClient {
     const stoppedAt = execution.stoppedAt;
     const duration = stoppedAt ? new Date(stoppedAt).getTime() - new Date(startedAt).getTime() : undefined;
 
-    return {
+    const status = execution.finished ? (execution.data?.resultData?.error ? 'error' : 'success') : 'running';
+    
+    const result: ExecutionSummary = {
       id: execution.id || executionId,
       workflowId: execution.workflowId || '',
-      status: execution.finished ? (execution.data?.resultData?.error ? 'error' : 'success') : 'running',
+      status: status as 'running' | 'success' | 'error' | 'waiting',
       startedAt,
       stoppedAt,
       duration,
       mode: execution.mode || 'manual',
       errorMessage: execution.data?.resultData?.error?.message
     };
+
+    // Cache completed executions for longer, running ones for shorter time
+    const ttl = ['success', 'error'].includes(result.status) ? 1800000 : 30000; // 30 min vs 30 sec
+    executionCache.set(cacheKey, result, ttl);
+
+    return result;
   }
 
   /**

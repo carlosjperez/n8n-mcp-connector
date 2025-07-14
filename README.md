@@ -1,6 +1,28 @@
 # N8N MCP Connector v2.0.0
 
-Advanced Model Context Protocol server for complete n8n workflow automation and programmatic management. Now with full node and connection management capabilities!
+A high-performance Model Context Protocol (MCP) server that provides seamless integration with N8N automation platform. This connector enables AI assistants and other MCP clients to interact with N8N workflows, executions, and automation capabilities with enterprise-grade reliability and performance.
+
+## ✨ Features
+
+### Core Capabilities
+- **Workflow Management**: Execute, list, and manage N8N workflows with advanced filtering
+- **Execution Monitoring**: Real-time tracking of workflow execution status and results
+- **Advanced Operations**: Create nodes, manage connections, and configure webhooks
+- **Node Management**: Full CRUD operations for individual workflow nodes
+
+### Performance & Reliability
+- **Intelligent Caching**: Multi-tier caching system with TTL and LRU eviction
+- **Connection Pooling**: Optimized HTTP connections for better performance
+- **Circuit Breaker**: Resilience patterns for external API failures
+- **Metrics & Monitoring**: Comprehensive performance tracking and health checks
+- **Rate Limiting**: Built-in protection against API abuse
+
+### Developer Experience
+- **Type Safety**: Full TypeScript implementation with strict typing
+- **Modular Architecture**: Clean, maintainable, and extensible codebase
+- **Comprehensive Testing**: Unit, integration, and E2E test coverage
+- **Rich Documentation**: Detailed guides and API documentation
+- **Configuration Management**: Centralized, validated configuration system
 
 [![CI/CD](https://github.com/carlosjperez/n8n-mcp-connector/actions/workflows/ci.yml/badge.svg)](https://github.com/carlosjperez/n8n-mcp-connector/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -116,49 +138,185 @@ N8N_PASSWORD=your_password
 }
 ```
 
-## 📋 Available Operations
+## 🛠️ Available Tools
 
-### Workflow Management
-- `execute_workflow` - Execute workflows with custom data
-- `list_workflows` - List and filter available workflows
-- `get_workflow` - Get detailed workflow information
-- `activate_workflow` - Enable/disable workflows
+The MCP server provides comprehensive tools for N8N automation:
 
-### Execution Monitoring
-- `get_execution_status` - Check execution progress
-- `list_executions` - View recent execution history
+### Core Workflow Tools
 
-### Integration Features
-- `create_webhook` - Generate webhook URLs for automation
+- `execute_workflow`: Execute workflows with advanced options and monitoring
+- `list_workflows`: List workflows with filtering, pagination, and caching
+- `get_workflow`: Get detailed workflow information with intelligent caching
+- `get_execution_status`: Real-time execution status with performance metrics
+- `list_executions`: List executions with filtering and statistics
+- `activate_workflow`: Activate/deactivate workflows with validation
+- `create_webhook`: Create webhook endpoints with security options
 
-## 🛠 Development
+### Advanced Node Management
+
+- `create_node`: Create new nodes with validation and type checking
+- `update_node`: Update existing nodes with conflict detection
+- `delete_node`: Safely remove nodes with dependency checking
+- `create_connection`: Create connections with validation
+- `delete_connection`: Remove connections with impact analysis
+
+### Monitoring & Diagnostics
+
+- Built-in health checks and status monitoring
+- Performance metrics and cache statistics
+- Error tracking and debugging tools
+- Connection pool and resource monitoring
+
+## 🧪 Testing
+
+Comprehensive testing strategy with multiple test types:
 
 ```bash
-# Development mode with hot reload
-npm run dev
-
-# Run tests
+# Run all tests
 npm test
 
-# Lint code
-npm run lint
+# Run specific test suites
+npm run test:unit        # Unit tests
+npm run test:integration # Integration tests
+npm run test:e2e         # End-to-end tests
 
-# Format code
-npm run format
+# Run with coverage
+npm run test:coverage
+
+# Run in watch mode
+npm run test:watch
+
+# Performance testing
+npm run test:performance
 ```
 
-## 🔧 Configuration
+## 🔧 Development
 
-### Performance Tuning
 ```bash
-N8N_TIMEOUT=30000      # Request timeout (ms)
-N8N_RETRIES=3          # Retry attempts
-N8N_RETRY_DELAY=1000   # Delay between retries (ms)
+# Start development server with hot reload
+npm run dev
+
+# Development with debug logging
+DEBUG=n8n-mcp:* npm run dev
+
+# Code quality
+npm run lint             # ESLint
+npm run format           # Prettier
+npm run type-check       # TypeScript
+
+# Build optimization
+npm run build:analyze    # Bundle analysis
+npm run build:production # Optimized build
 ```
 
-### Debug Mode
+## 🏗️ Architecture
+
+The connector follows a modern, scalable architecture with performance optimizations:
+
+```
+src/
+├── config/           # Centralized configuration management
+│   └── index.ts      # Validated configuration with defaults
+├── clients/          # External service clients
+│   └── n8n-client.ts # N8N API client with caching & pooling
+├── handlers/         # MCP tool handlers
+│   ├── tool-handlers.ts
+│   └── advanced-tool-handlers.ts
+├── utils/            # Utility modules
+│   ├── cache.ts      # Intelligent caching system
+│   ├── metrics.ts    # Metrics and monitoring
+│   ├── logger.ts     # Structured logging
+│   ├── validator.ts  # Input validation
+│   └── resilience.ts # Circuit breaker & retry logic
+└── index.ts          # Main server with monitoring
+```
+
+### Key Design Patterns
+
+- **Singleton Pattern**: Configuration and client instances
+- **Factory Pattern**: Tool handler creation
+- **Observer Pattern**: Event-driven metrics collection
+- **Circuit Breaker**: Resilience for external API calls
+- **Cache-Aside**: Intelligent caching with TTL and LRU eviction
+
+### Performance Features
+
+- **Multi-tier Caching**: Different TTL for different data types
+- **Connection Pooling**: Optimized HTTP connections
+- **Request Batching**: Efficient API usage
+- **Lazy Loading**: On-demand resource initialization
+- **Memory Management**: Automatic cleanup and optimization
+
+## 📊 Performance Metrics
+
+### Expected Performance
+
+- **Request Latency**: < 100ms (cached), < 500ms (uncached)
+- **Throughput**: > 1000 requests/minute
+- **Cache Hit Ratio**: > 80% for repeated requests
+- **Memory Usage**: < 512MB under normal load
+- **Uptime**: > 99.9% availability
+
+### Monitoring
+
 ```bash
-DEBUG=n8n-connector:* npm start
+# Health check
+curl http://localhost:3000/health
+
+# Detailed metrics
+curl http://localhost:3000/metrics
+
+# Cache statistics
+curl http://localhost:3000/health/detailed
+```
+
+## 📚 Documentation
+
+- [Technical Guide](TECHNICAL_GUIDE.md) - Comprehensive development guide
+- [Architecture Documentation](ARCHITECTURE.md) - System architecture details
+- [API Reference](API.md) - Complete API documentation
+- [Deployment Guide](DEPLOYMENT.md) - Production deployment instructions
+- [Troubleshooting](TROUBLESHOOTING.md) - Common issues and solutions
+
+## ⚙️ Configuration
+
+The connector uses a hierarchical configuration system with environment variables. Copy `.env.example` to `.env` and configure:
+
+### Required Settings
+
+- `N8N_BASE_URL`: Your N8N instance URL (e.g., `http://localhost:5678`)
+- `N8N_API_KEY`: Your N8N API key (get from N8N Settings > API Keys)
+
+### Performance Settings
+
+```bash
+# Cache Configuration
+CACHE_DEFAULT_TTL=600000          # 10 minutes default TTL
+CACHE_WORKFLOWS_DETAILS_TTL=600000 # Workflow details cache
+CACHE_EXECUTIONS_COMPLETED_TTL=1800000 # Completed executions cache
+
+# Connection Settings
+CONNECTION_POOL_SIZE=10           # HTTP connection pool size
+REQUEST_TIMEOUT=30000             # Request timeout
+CIRCUIT_BREAKER_THRESHOLD=5       # Circuit breaker threshold
+
+# Monitoring
+MONITORING_ENABLED=true           # Enable metrics collection
+METRICS_INTERVAL=30000            # Metrics collection interval
+```
+
+### Environment-Specific Settings
+
+```bash
+# Development
+NODE_ENV=development
+LOG_LEVEL=debug
+DEBUG=n8n-mcp:*
+
+# Production
+NODE_ENV=production
+LOG_LEVEL=warn
+MONITORING_ENABLED=true
 ```
 
 ## 🔒 Security
