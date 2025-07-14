@@ -684,3 +684,4 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 // Export for testing and external use
 export { N8nMcpServer };
 export default N8nMcpServer;
+// Test error - invalid syntax for testing automation

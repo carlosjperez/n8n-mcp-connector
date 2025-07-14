@@ -197,6 +197,28 @@ Ask Claude: "Create a webhook for the order-processing workflow"
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
+## 🤖 Sistema de Automatización
+
+**¡NUEVO!** Sistema automatizado de gestión de errores CI/CD con integración Linear:
+
+- ✅ **Detección automática** de fallos en CI/CD
+- 🎯 **Asignación inteligente** de agentes especializados  
+- 📊 **Sincronización** GitHub ↔ Linear
+- 📈 **Métricas** y seguimiento automatizado
+
+### 🚀 Configuración Rápida
+```bash
+# Configuración automática del sistema
+./setup-automation-system.sh
+
+# Verificar funcionamiento
+./verify-automation-system.sh
+```
+
+📖 **Documentación completa**: [README-AUTOMATION.md](./README-AUTOMATION.md)
+
+---
+
 ## 🆘 Support
 
 - 📖 [Documentation](docs/)
