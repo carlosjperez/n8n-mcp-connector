@@ -37,11 +37,15 @@ A high-performance Model Context Protocol (MCP) server that provides seamless in
 
 ### 📦 Instalación Remota (Recomendado)
 
-#### Opción A: NPM Global
+Nuestros scripts de instalación ahora detectan automáticamente el mejor ejecutor de paquetes (`uvx`, `npx`, `npm`) disponible en tu sistema para una experiencia más fluida y un rendimiento óptimo.
+
+Puedes anular el ejecutor detectado configurando la variable de entorno `RUNNER`. Por ejemplo: `RUNNER=npm ./install-remote.sh`.
+
+#### Opción A: Ejecución Remota con Runner Dinámico
 ```bash
 # Instalación automática
 curl -fsSL https://raw.githubusercontent.com/carlosjperez/n8n-mcp-connector/main/install-remote.sh | bash
-# Selecciona opción 1 (NPM Global)
+# Selecciona la opción 1
 ```
 
 #### Opción B: MCP.so
@@ -86,7 +90,9 @@ N8N_PASSWORD=your_password
 
 ### Claude Desktop Integration
 
-#### 📦 Configuración NPM Global (Sin instalación local)
+**Nota:** Los scripts de instalación se encargan de esto automáticamente. La siguiente configuración es un ejemplo. El campo `command` será rellenado por el script de instalación con el ejecutor de paquetes detectado (`uvx`, `npx`, o `npm`).
+
+#### 📦 Configuración de Ejecución Remota (Ejemplo)
 
 ```json
 {

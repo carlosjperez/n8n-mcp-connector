@@ -5,6 +5,11 @@
 
 set -e
 
+# Importar y usar el detector de runner
+source "$(dirname "$0")/scripts/detect-runner.sh"
+RUNNER=$(detect_runner)
+echo "🏃 Runner detectado: $RUNNER"
+
 echo "🎯 N8N MCP Connector - Instalación Universal para Agentes IA"
 echo "============================================================"
 echo ""
@@ -59,7 +64,7 @@ setup_cursor() {
     
     case $install_choice in
         1)
-            generate_base_config "npx" '"n8n-mcp-connector"' > "$config_file"
+            generate_base_config "$RUNNER" '"n8n-mcp-connector"' > "$config_file"
             ;;
         2)
             generate_base_config "mcp" '"install", "n8n-workflows/carlosjperez"' > "$config_file"
@@ -92,7 +97,7 @@ setup_continue() {
     {
       "name": "n8n-workflows",
       "params": {
-        "serverCommand": "npx n8n-mcp-connector",
+        "serverCommand": "$RUNNER n8n-mcp-connector",
         "env": {
           "N8N_BASE_URL": "https://tu-instancia-n8n.com",
           "N8N_API_KEY": "tu_api_key_aqui"
@@ -116,7 +121,7 @@ setup_codeium() {
     
     case $install_choice in
         1)
-            generate_base_config "npx" '"n8n-mcp-connector"' > "$config_file"
+            generate_base_config "$RUNNER" '"n8n-mcp-connector"' > "$config_file"
             ;;
         2)
             generate_base_config "mcp" '"install", "n8n-workflows/carlosjperez"' > "$config_file"
@@ -147,7 +152,7 @@ setup_claude() {
     
     case $install_choice in
         1)
-            generate_base_config "npx" '"n8n-mcp-connector"' > "$config_file"
+            generate_base_config "$RUNNER" '"n8n-mcp-connector"' > "$config_file"
             ;;
         2)
             generate_base_config "mcp" '"install", "n8n-workflows/carlosjperez"' > "$config_file"
@@ -172,7 +177,7 @@ setup_manual() {
     case $install_choice in
         1)
             echo "NPM Global:"
-            generate_base_config "npx" '"n8n-mcp-connector"'
+            generate_base_config "$RUNNER" '"n8n-mcp-connector"'
             ;;
         2)
             echo "MCP.so:"
